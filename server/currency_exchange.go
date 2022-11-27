@@ -14,7 +14,7 @@ import (
 
 const exchangeURL = "https://economia.awesomeapi.com.br/json/last/USD-BRL"
 
-type DollarExchange struct {
+type DollarExchangeInputDTO struct {
 	ID     string
 	Usdbrl struct {
 		Code       string `json:"code"`
@@ -31,12 +31,8 @@ type DollarExchange struct {
 	} `json:"USDBRL"`
 }
 
-func GetExchange(db *sql.DB) *DollarExchange {
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*200)
-	defer cancel()
-
-	exchange, err := getExchange(ctx)
+func GetExchange(db *sql.DB) *DollarExchangeInputDTO {
+	exchange, err := getExchange()
 	if err != nil {
 		panic(err)
 	}
@@ -50,7 +46,11 @@ func GetExchange(db *sql.DB) *DollarExchange {
 	return exchange
 }
 
-func getExchange(ctx context.Context) (*DollarExchange, error) {
+func getExchange() (*DollarExchangeInputDTO, error) {
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*200)
+	defer cancel()
+
 	req, err := http.NewRequestWithContext(ctx, "GET", exchangeURL, nil)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func getExchange(ctx context.Context) (*DollarExchange, error) {
 		return nil, err
 	}
 
-	var exchange DollarExchange
+	var exchange DollarExchangeInputDTO
 	err = json.Unmarshal(body, &exchange)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func getExchange(ctx context.Context) (*DollarExchange, error) {
 	return &exchange, nil
 }
 
-func saveExchange(db *sql.DB, exchange *DollarExchange) error {
+func saveExchange(db *sql.DB, exchange *DollarExchangeInputDTO) error {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*10)
 	defer cancel()
@@ -99,17 +99,17 @@ func saveExchange(db *sql.DB, exchange *DollarExchange) error {
 	return nil
 }
 
-func GetAllExchangesSaved(db *sql.DB) []DollarExchange {
+func GetAllExchangesSaved(db *sql.DB) []DollarExchangeInputDTO {
 	rows, err := db.Query(`select id, code, name from exchanges`)
 	if err != nil {
 		panic(err)
 	}
 	defer rows.Close()
 
-	var exchanges []DollarExchange
+	var exchanges []DollarExchangeInputDTO
 
 	for rows.Next() {
-		var exchange DollarExchange
+		var exchange DollarExchangeInputDTO
 
 		err = rows.Scan(&exchange.ID, &exchange.Usdbrl.Code, &exchange.Usdbrl.Name)
 		if err != nil {
